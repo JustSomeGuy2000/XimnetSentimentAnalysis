@@ -13,8 +13,9 @@ class ClientComms {
     ws;
     reader;
     clientKey;
-    data;
     error;
+    charts;
+    chartRefs;
     constructor() {
         this.setImageReady = (_) => { console.log("Image setter not yet provided."); };
         this.setSocket("ws://localhost:5500");
@@ -28,8 +29,9 @@ class ClientComms {
             this.error = "Error in reading file.";
             this.setImageReady(true);
         });
-        this.data = {};
         this.error = null;
+        this.charts = [];
+        this.chartRefs = [];
     }
     setSocket(address) {
         this.ws = new WebSocket(address);
@@ -124,7 +126,7 @@ class ClientComms {
             data = rawData;
         }
         const labels = ["Positive", "Negative"];
-        const charts = {};
+        let ind = 0;
         for (const productName in data) {
             const chart = {
                 labels: labels,
@@ -144,9 +146,30 @@ class ClientComms {
                     }
                 ],
             };
-            charts[productName] = chart;
+            if (ind >= this.charts.length) {
+                this.charts.push(<div className="chart-container">
+                        <Pie className="sentiment-chart" data={chart} options={{
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: productName
+                            }
+                        },
+                        maintainAspectRatio: false
+                    }} ref={reference => this.chartRefs.push(reference)} redraw={true}/>
+                    </div>);
+            }
+            else {
+                const ref = this.chartRefs[ind];
+                ref.data = chart;
+                ref.update();
+            }
+            ind += 1;
         }
-        this.data = charts;
+        if (ind < this.charts.length) {
+            this.charts.splice(ind + 1);
+            this.chartRefs.splice(ind + 1);
+        }
         this.setImageReady(true);
         console.log("Setting image as ready");
     }
@@ -166,22 +189,6 @@ const comms = new ClientComms();
 export default function App() {
     const [imageReady, setImageReady] = useState(false);
     comms.setImageReady = setImageReady;
-    const charts = [];
-    for (const productName in comms.data) {
-        charts.push(<div className="chart-container" key={Math.random()}>
-            <Pie className="sentiment-chart" data={comms.data[productName]} options={{
-                plugins: {
-                    title: {
-                        display: true,
-                        text: productName
-                    }
-                },
-                maintainAspectRatio: false
-            }} redraw={true} key={Math.random()}/>
-        </div>);
-    }
-    console.log(`Final charts data: ${JSON.stringify(charts)}`);
-    // Chart data reaches this point as expected (properly updated).
     return (<>
     <form className="input-form" id="input-form">
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
@@ -193,8 +200,6 @@ export default function App() {
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{comms.error == null ? "" : comms.error}</div>
-    {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
-    {// Charts even make it to here properly!
-        }
+    {imageReady ? <div className="chart-display-area">{comms.charts}</div> : <></>}
     </>);
 }

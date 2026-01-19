@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey, SentimentAnalysisResult } from "./messages.js"
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartData, Title } from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartData, Title, Chart } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
@@ -16,8 +16,9 @@ class ClientComms {
     ws: WebSocket
     reader: FileReader
     clientKey: string
-    data: {[index: string]: ChartData<"pie">}
     error: string | null
+    charts: React.JSX.Element[]
+    chartRefs: ChartJS<"pie">[]
 
     constructor() {
         this.setImageReady = (_) => { console.log("Image setter not yet provided.") }
@@ -32,8 +33,9 @@ class ClientComms {
             this.error = "Error in reading file."
             this.setImageReady(true)
         })
-        this.data = {}
         this.error = null
+        this.charts = []
+        this.chartRefs = []
     }
 
     setSocket(address: string) {
@@ -129,7 +131,7 @@ class ClientComms {
             data = rawData as SentimentAnalysisResult
         }
         const labels = ["Positive", "Negative"]
-        const charts: {[index: string]: ChartData<"pie">} = {}
+        let ind = 0
         for (const productName in data) {
             const chart: ChartData<"pie"> = {
                 labels: labels,
@@ -149,9 +151,30 @@ class ClientComms {
                     }
                 ],
             }
-            charts[productName] = chart
+            if (ind >= this.charts.length) {
+                this.charts.push(
+                    <div className="chart-container">
+                        <Pie className="sentiment-chart" data={chart} options={{
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: productName
+                                }
+                            },
+                            maintainAspectRatio: false
+                        }} ref={reference => this.chartRefs.push(reference as ChartJS<"pie">)} redraw={true}/>
+                    </div>)
+            } else {
+                const ref = this.chartRefs[ind]
+                ref.data = chart
+                ref.update()
+            }
+            ind += 1
         }
-        this.data = charts
+        if (ind < this.charts.length) {
+            this.charts.splice(ind + 1)
+            this.chartRefs.splice(ind + 1)
+        }
         this.setImageReady(true)
         console.log("Setting image as ready")
     }
@@ -175,21 +198,6 @@ const comms = new ClientComms()
 export default function App() {
     const [imageReady, setImageReady] = useState(false)
     comms.setImageReady = setImageReady
-    const charts = []
-    for (const productName in comms.data) {
-        charts.push(
-        <div className="chart-container">
-            <Pie className="sentiment-chart" data={comms.data[productName]} options={{
-                plugins: {
-                    title: {
-                        display: true,
-                        text: productName
-                    }
-                },
-                maintainAspectRatio: false
-            }}/>
-        </div>)
-    }
     return (<>
     <form className="input-form" id="input-form">
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
@@ -201,6 +209,6 @@ export default function App() {
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{comms.error == null ? "" : comms.error}</div>
-    {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
+    {imageReady ? <div className="chart-display-area">{comms.charts}</div> : <></>}
     </>)
 }
