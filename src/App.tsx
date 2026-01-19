@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", (_) => {
 
 class ClientComms {
     setImageReady: (to: boolean) => void
+    setCharts: (to: React.JSX.Element[]) => void
     ws: WebSocket
     reader: FileReader
     clientKey: string
@@ -22,8 +23,8 @@ class ClientComms {
 
     constructor() {
         this.setImageReady = (_) => { console.log("Image setter not yet provided.") }
+        this.setCharts = (_) => { console.log("Chart setter not yet provided.") }
         this.setSocket("ws://localhost:5500")
-        console.log("Hello from ClientComms!")
         this.reader = new FileReader()
         this.reader.addEventListener("load", (_) => {
             this.submit(this.reader.result as string)
@@ -132,6 +133,7 @@ class ClientComms {
         }
         const labels = ["Positive", "Negative"]
         let ind = 0
+        let tempCharts = this.charts.slice()
         for (const productName in data) {
             const chart: ChartData<"pie"> = {
                 labels: labels,
@@ -151,9 +153,9 @@ class ClientComms {
                     }
                 ],
             }
-            if (ind >= this.charts.length) {
-                this.charts.push(
-                    <div className="chart-container">
+            if (ind >= tempCharts.length) {
+                tempCharts.push(
+                    <div className="chart-container" key={productName}>
                         <Pie className="sentiment-chart" data={chart} options={{
                             plugins: {
                                 title: {
@@ -162,20 +164,36 @@ class ClientComms {
                                 }
                             },
                             maintainAspectRatio: false
-                        }} ref={reference => this.chartRefs.push(reference as ChartJS<"pie">)} redraw={true}/>
+                        }} ref={ref => { console.log(`Ref for ${productName} added.`)
+                            this.chartRefs.push(ref as ChartJS<"pie">)}} redraw={true}/>
                     </div>)
             } else {
                 const ref = this.chartRefs[ind]
-                ref.data = chart
-                ref.update()
+                if (ref !== null) {
+                    tempCharts[ind].key = productName
+                    ref.data = chart
+                    const refTitle = ref.options.plugins?.title
+                    if (refTitle !== undefined) {
+                        refTitle.text = productName
+                    }
+                    ref.update()
+                }
             }
+            console.log(`Index: ${ind}, charts length: ${tempCharts.length}, refs length: ${this.chartRefs.length}, product: ${productName}`)
             ind += 1
         }
-        if (ind < this.charts.length) {
-            this.charts.splice(ind + 1)
-            this.chartRefs.splice(ind + 1)
+        if (ind < tempCharts.length) {
+            console.log(`Extra elements found (ind: ${ind}, charts length: ${tempCharts.length}), removing...`)
+            const removedElements = tempCharts.splice(ind)
+            const removedRefs = this.chartRefs.splice(ind)
+            for (const ref of removedRefs) {
+                ref.destroy()
+            }
+            console.log(`Lengths after removal: charts: ${tempCharts.length}, refs: ${this.chartRefs.length}`)
         }
         this.setImageReady(true)
+        this.charts = tempCharts
+        this.setCharts(tempCharts)
         console.log("Setting image as ready")
     }
 
@@ -198,6 +216,9 @@ const comms = new ClientComms()
 export default function App() {
     const [imageReady, setImageReady] = useState(false)
     comms.setImageReady = setImageReady
+    const [charts, setCharts] = useState<React.JSX.Element[]>([])
+    comms.setCharts = setCharts
+    console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
     <form className="input-form" id="input-form">
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
@@ -209,6 +230,6 @@ export default function App() {
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{comms.error == null ? "" : comms.error}</div>
-    {imageReady ? <div className="chart-display-area">{comms.charts}</div> : <></>}
+    {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
     </>)
 }
