@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "esModuleInterop": true,
+        "module": "nodenext",
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "alwaysStrict": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "jsx": "preserve",
+    },
+    "files": [
+        "./server.ts",
+        "./src/messages.ts",
+        "./src/App.tsx",
+        "./src/serverComms.ts"
+    ]
+}
