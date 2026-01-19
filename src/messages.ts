@@ -3,11 +3,15 @@ export type Message = {
     clientkey: string
 }
 
-type SentimentAnalysisResult = {
+export type SentimentAnalysisResult = {
     [index: string]: {
         "p": number,
         "n": number
-    }
+    },
+}
+
+export type SentimentAnalysisError = {
+    error: string
 }
 
 export const HEADER_INCOMING_IMAGE = "incoming_image"
@@ -15,9 +19,9 @@ export const HEADER_INCOMING_IMAGE = "incoming_image"
 export class MsgImage {
     header: "incoming_image"
     clientKey: string
-    data: SentimentAnalysisResult
+    data: string
 
-    constructor(clientKey: string, data: SentimentAnalysisResult) {
+    constructor(clientKey: string, data: string) {
         this.header = HEADER_INCOMING_IMAGE
         this.clientKey = clientKey
         this.data = data

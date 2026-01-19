@@ -1,12 +1,12 @@
 import { useState } from "react"
-import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey } from "./messages.js"
+import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey, SentimentAnalysisResult } from "./messages.js"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartData, Title } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 document.addEventListener("DOMContentLoaded", (_) => {
-    document.getElementById("input_form")?.addEventListener("submit", (e) => {
+    document.getElementById("input-form")?.addEventListener("submit", (e) => {
         e.preventDefault()
     })
 })
@@ -17,13 +17,23 @@ class ClientComms {
     reader: FileReader
     clientKey: string
     data: {[index: string]: ChartData<"pie">}
+    error: string | null
 
     constructor() {
         this.setImageReady = (_) => { console.log("Image setter not yet provided.") }
         this.setSocket("ws://localhost:5500")
         console.log("Hello from ClientComms!")
         this.reader = new FileReader()
+        this.reader.addEventListener("load", (_) => {
+            this.submit(this.reader.result as string)
+        })
+        this.reader.addEventListener("error", e => {
+            console.log(`Error in reading file: ${e}.`)
+            this.error = "Error in reading file."
+            this.setImageReady(true)
+        })
         this.data = {}
+        this.error = null
     }
 
     setSocket(address: string) {
@@ -31,7 +41,11 @@ class ClientComms {
         this.ws.addEventListener("message", (event) => {
             this.handleMessage(event.data.toString())
         })
-        this.ws.addEventListener("error", (e) => { console.log(`Error: ${e}`) })
+        this.ws.addEventListener("error", (e) => { 
+            console.log(`Websocket error: ${e}`) 
+            this.error = `Websocket error.`
+            this.setImageReady(true)
+        })
         this.ws.addEventListener("close", (_) => { console.log("ClientComms socket closing.")
          })
         this.ws.addEventListener("open", (_) => { console.log("Hello from the ClientComms socket!") })
@@ -69,20 +83,17 @@ class ClientComms {
     prepareSubmit() {
         let ip = ""
         let port = ""
-        document.querySelector(".input_form")?.querySelectorAll("input").forEach((input) => {
+        document.querySelector(".input-form")?.querySelectorAll("input").forEach((input) => {
             switch (input.id) {
-                case "ip_input":
+                case "ip-input":
                     ip = input.value
                     break
-                case "port_input":
+                case "port-input":
                     port = input.value
                     break
-                case "file_input":
+                case "file-input":
                     if (input.files !== null && input.files?.length > 0) {
                         this.reader.readAsText(input.files[0])
-                        this.reader.addEventListener("load", (_) => {
-                            this.submit(this.reader.result as string)
-                        })
                     }
                     break
             }
@@ -99,17 +110,24 @@ class ClientComms {
         }
         request.onerror = (_) => {
             console.log("Upload to server failed.")
-            let error_area = document.getElementById("error_area")
-            if (error_area !== null) {
-                error_area.textContent = "Upload to server failed."
-            }
+            this.error = "Upload to server failed."
+            this.setImageReady(true)
         }
         request.send(JSON.stringify(new MsgCsv(this.clientKey, data)))
         console.log("Outgoing: CSV")
     }
 
     handleIncomingImage(msg: MsgImage) {
-        const data = msg.data
+        this.error = null
+        const rawData = JSON.parse(msg.data)
+        let data
+        if ("error" in rawData) {
+            this.error = "Whoops! A server error occurred."
+            this.setImageReady(true)
+            return
+        } else {
+            data = rawData as SentimentAnalysisResult
+        }
         const labels = ["Positive", "Negative"]
         const charts: {[index: string]: ChartData<"pie">} = {}
         for (const productName in data) {
@@ -120,12 +138,12 @@ class ClientComms {
                         label: "Number of reviews",
                         data: [data[productName]["p"], data[productName]["n"]],
                         backgroundColor: [
-                            'rgba(255, 99, 132, 0.2)',
                             'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
                         ],
                         borderColor: [
-                            'rgba(255, 99, 132, 1)',
                             'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)', 
                         ],
                         borderWidth: 1,
                     }
@@ -159,26 +177,30 @@ export default function App() {
     comms.setImageReady = setImageReady
     const charts = []
     for (const productName in comms.data) {
-        charts.push(<><Pie data={comms.data[productName]} options={{
-        plugins: {
-            title: {
-                display: true,
-                text: productName
-            }
-        }
-    }}/><br /></>)
+        charts.push(
+        <div className="chart-container">
+            <Pie className="sentiment-chart" data={comms.data[productName]} options={{
+                plugins: {
+                    title: {
+                        display: true,
+                        text: productName
+                    }
+                },
+                maintainAspectRatio: false
+            }}/>
+        </div>)
     }
     return (<>
-    <form className="input_form" id="input_form">
-        <label htmlFor="file_input">Choose file (only .csv allowed)</label> <br />
-        <input type="file" id="file_input" name="file_input" accept=".csv" /> <br />
-        <label htmlFor="ip_input">Input server address:</label> <br />
-        <input type="text" id="ip_input"/> <br />
+    <form className="input-form" id="input-form">
+        <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
+        <input type="file" id="file-input" name="file-input" accept=".csv" /> <br />
+        <label htmlFor="ip-input">Input server address:</label> <br />
+        <input type="text" id="ip-input"/> <br />
         <label htmlFor="port_input">Input port number:</label> <br />
-        <input type="text" id="port_input"/> <br />
+        <input type="text" id="port-input"/> <br />
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>
-    <div className="error_area"></div>
-    {imageReady ? charts : <></>}
+    <div className="error-area">{comms.error == null ? "" : comms.error}</div>
+    {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
     </>)
 }

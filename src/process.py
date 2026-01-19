@@ -38,7 +38,6 @@ async def analyse(data: str) -> str:
     }
     {"error": error} is returned if an error occurred.'''
     try:
-        print(data)
         readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=lambda c: str(c).lower() in [PRODUCT_NAME, REVIEW], dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip")
         readData.columns = [PRODUCT_NAME, REVIEW]
         products: dict[str, list[str]] = {}
