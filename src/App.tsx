@@ -149,11 +149,11 @@ class ClientComms {
                     }
                 ],
             }
-            console.log(`Chart data (${productName}): ${JSON.stringify(chart)}`)
             charts[productName] = chart
         }
         this.data = charts
         this.setImageReady(true)
+        console.log("Setting image as ready")
     }
 
     handleIncomingKey(msg: MsgKey) {
@@ -196,7 +196,7 @@ export default function App() {
         <input type="file" id="file-input" name="file-input" accept=".csv" /> <br />
         <label htmlFor="ip-input">Input server address:</label> <br />
         <input type="text" id="ip-input"/> <br />
-        <label htmlFor="port_input">Input port number:</label> <br />
+        <label htmlFor="port-input">Input port number:</label> <br />
         <input type="text" id="port-input"/> <br />
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>

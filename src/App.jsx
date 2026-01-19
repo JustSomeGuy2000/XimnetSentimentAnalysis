@@ -144,11 +144,11 @@ class ClientComms {
                     }
                 ],
             };
-            console.log(`Chart data (${productName}): ${JSON.stringify(chart)}`);
             charts[productName] = chart;
         }
         this.data = charts;
         this.setImageReady(true);
+        console.log("Setting image as ready");
     }
     handleIncomingKey(msg) {
         this.clientKey = msg.clientKey;
@@ -168,7 +168,7 @@ export default function App() {
     comms.setImageReady = setImageReady;
     const charts = [];
     for (const productName in comms.data) {
-        charts.push(<div className="chart-container">
+        charts.push(<div className="chart-container" key={Math.random()}>
             <Pie className="sentiment-chart" data={comms.data[productName]} options={{
                 plugins: {
                     title: {
@@ -177,20 +177,24 @@ export default function App() {
                     }
                 },
                 maintainAspectRatio: false
-            }}/>
+            }} redraw={true} key={Math.random()}/>
         </div>);
     }
+    console.log(`Final charts data: ${JSON.stringify(charts)}`);
+    // Chart data reaches this point as expected (properly updated).
     return (<>
     <form className="input-form" id="input-form">
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
         <input type="file" id="file-input" name="file-input" accept=".csv"/> <br />
         <label htmlFor="ip-input">Input server address:</label> <br />
         <input type="text" id="ip-input"/> <br />
-        <label htmlFor="port_input">Input port number:</label> <br />
+        <label htmlFor="port-input">Input port number:</label> <br />
         <input type="text" id="port-input"/> <br />
         <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{comms.error == null ? "" : comms.error}</div>
     {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
+    {// Charts even make it to here properly!
+        }
     </>);
 }

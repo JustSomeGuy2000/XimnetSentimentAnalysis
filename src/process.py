@@ -6,12 +6,13 @@ import transformers as tf
 PRODUCT_NAME = "productname"
 REVIEW = "review"
 
-pipeline = tf.pipeline("text-classification", device="cpu")
+MODEL = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
+pipeline = tf.pipeline("text-classification", model=MODEL, device="cpu")
 
 async def analyse(data: str) -> str:
     '''Analyse a CSV string containing product reviews according to a certain schema and return a sentiment analysis. <br />
     ## Schema
-    2 fields expected, in relative order (case-sensitive until further notice): 
+    2 fields expected, in relative order (case-insensitive): 
 
         1. productName (str)
         2. review (str)
@@ -29,13 +30,16 @@ async def analyse(data: str) -> str:
 
     ## Output
     JSON in format: {
+
         productName1: {
+
             "p": number of positive reviews, 
             "n": number of negative reviews
             
             }, 
         productName2: ...
     }
+
     {"error": error} is returned if an error occurred.'''
     try:
         readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=lambda c: str(c).lower() in [PRODUCT_NAME, REVIEW], dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip")
