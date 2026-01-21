@@ -11,16 +11,22 @@ document.addEventListener("DOMContentLoaded", (_) => {
     })
 })
 
+const PROD_NAME_KEY = "productName"
+const REV_NAME_KEY = "revName"
+
 class ClientComms {
     setImageReady: (to: boolean) => void = (_) => console.log("Image setter not yet provided.")
     setCharts: (to: React.JSX.Element[]) => void = (_) => console.log("Chart setter not yet provided.")
     setError: (to: string | null) => void = (_) => console.log("Error setter not yet provided.")
+    setLoading: (to: string) => void = (_) => console.log("Loading setter not yet provided.")
     #ws: WebSocket
     #reader: FileReader
     #clientKey: string
     #chartRefs: (ChartJS<"pie"> | null)[] = []
     #prodName = ""
     #revName = ""
+    #loadingProgress = 1
+    #loadingIntervalID: number | null = null
 
     constructor() {
         this.#setSocket("ws://localhost:5500")
@@ -79,6 +85,9 @@ class ClientComms {
     prepareSubmit(prodName: string, revName: string) {
         this.#prodName = prodName
         this.#revName = revName
+        const ls = window.localStorage
+        ls.setItem(PROD_NAME_KEY, this.#prodName)
+        ls.setItem(REV_NAME_KEY, this.#revName)
         if (this.#prodName == this.#revName) {
             this.setError("Product name column name and reviews column name cannot be the same.")
             return
@@ -118,6 +127,26 @@ class ClientComms {
         }
         request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName)))
         console.log("Outgoing: CSV")
+        this.#startLoading()
+    }
+
+    #startLoading() {
+        this.#stopLoading()
+        this.#loadingIntervalID = window.setInterval((() => {
+            this.setLoading(`Loading${".".repeat(this.#loadingProgress)}`)
+            this.#loadingProgress += 1
+            if (this.#loadingProgress >= 4) {
+                this.#loadingProgress = 1
+            }
+        }).bind(this), 1000)
+    }
+
+    #stopLoading(){
+        if (this.#loadingIntervalID !== null) {
+            window.clearInterval(this.#loadingIntervalID)
+        }
+        this.setLoading("")
+        this.#loadingIntervalID = null
     }
 
     #handleIncomingImage(msg: MsgImage) {
@@ -172,6 +201,7 @@ class ClientComms {
                 </div>) // Note: Do NOT remove redraw. It will cause a crash when rendering for the 3rd time.
             ind += 1
         }
+        this.#stopLoading()
         this.setImageReady(true)
         this.setCharts(tempCharts)
         console.log("Setting image as ready")
@@ -192,6 +222,8 @@ class ClientComms {
     }
 }
 
+const savedProdName = window.localStorage.getItem(PROD_NAME_KEY) || "productName"
+const savedRevName  =window.localStorage.getItem(REV_NAME_KEY) || "reviews"
 const comms = new ClientComms()
 export default function App() {
     const [imageReady, setImageReady] = useState(false)
@@ -200,8 +232,10 @@ export default function App() {
     comms.setCharts = setCharts
     const [error, setError] = useState<string | null>(null)
     comms.setError = setError
-    const [prodName, setProdName] = useState("productName")
-    const [revName, setRevName] = useState("reviews")
+    const [prodName, setProdName] = useState(savedProdName)
+    const [revName, setRevName] = useState(savedRevName)
+    const [loadingText, setLoadingText] = useState("")
+    comms.setLoading = setLoadingText
     //console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
     <form className="input-form" id="input-form">
@@ -216,6 +250,7 @@ export default function App() {
         <button onClick={comms.prepareSubmit.bind(comms, prodName, revName)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{error == null ? "" : error}</div>
+    <div className="loading-area">{loadingText}</div>
     {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
     </>)
 }

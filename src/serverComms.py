@@ -153,7 +153,7 @@ class ServerComms:
             print(f"Outgoing: {data}")
             await conn.send(data)
         except ws.ConnectionClosed:
-            print(f"Outgoing failed (socket already closed): {data}")
+            print("Outgoing failed (socket already closed).")
 
     async def closeConnection(self, key: str):
         '''Close the connection and remove it from any relevant collections.'''
