@@ -155,6 +155,7 @@ class ClientComms {
         let data
         if ("error" in rawData) {
             this.setError(`Error: ${rawData.error}`)
+            this.#stopLoading()
             return
         } else {
             data = rawData as SentimentAnalysisResult
