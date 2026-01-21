@@ -9,13 +9,17 @@ export class MsgImage {
         this.data = data;
     }
 }
-/**Contains the entirety of the file as a string.*/
+/**Contains the entirety of the file as a string, as well as header names.*/
 export class MsgCsv {
     clientKey;
     data;
-    constructor(clientKey, data) {
+    prodName;
+    revName;
+    constructor(clientKey, data, prodName, revName) {
         this.clientKey = clientKey;
         this.data = data;
+        this.prodName = prodName;
+        this.revName = revName;
     }
 }
 export const HEADER_INCOMING_KEY = "incoming_key";

@@ -16,6 +16,8 @@ class ClientComms {
     #reader;
     #clientKey;
     #chartRefs = [];
+    #prodName = "";
+    #revName = "";
     constructor() {
         this.#setSocket("ws://localhost:5500");
         this.#reader = new FileReader();
@@ -33,7 +35,6 @@ class ClientComms {
         this.#ws.addEventListener("error", e => {
             console.log(`Websocket error: ${e}`);
             this.setError(`Websocket error.`);
-            this.setImageReady(true);
         });
         this.#ws.addEventListener("close", (_) => console.log("ClientComms socket closing."));
         this.#ws.addEventListener("open", (_) => console.log("Hello from the ClientComms socket!"));
@@ -68,9 +69,25 @@ class ClientComms {
             console.log(`Received malformed message: ${message}`);
         }
     }
-    prepareSubmit() {
+    prepareSubmit(prodName, revName) {
+        this.#prodName = prodName;
+        this.#revName = revName;
+        if (this.#prodName == this.#revName) {
+            this.setError("Product name column name and reviews column name cannot be the same.");
+            return;
+        }
+        if (this.#prodName == "" || this.#revName == "") {
+            this.setError("Column names cannot be empty.");
+            return;
+        }
         document.querySelector(".input-form")?.querySelectorAll("input").forEach(input => {
             switch (input.id) {
+                case "prod-name-input":
+                    this.#prodName = input.value;
+                    break;
+                case "rev-name-input":
+                    this.#revName = input.value;
+                    break;
                 case "file-input":
                     if (input.files !== null && input.files?.length > 0) {
                         this.#reader.readAsText(input.files[0]);
@@ -90,9 +107,8 @@ class ClientComms {
         request.onerror = (_) => {
             console.log("Upload to server failed.");
             this.setError("Upload to server failed.");
-            this.setImageReady(true);
         };
-        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data)));
+        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName)));
         console.log("Outgoing: CSV");
     }
     #handleIncomingImage(msg) {
@@ -100,8 +116,7 @@ class ClientComms {
         const rawData = JSON.parse(msg.data);
         let data;
         if ("error" in rawData) {
-            this.setError("Whoops! A server error occurred.");
-            this.setImageReady(true);
+            this.setError(`Error: ${rawData.error}`);
             return;
         }
         else {
@@ -144,11 +159,8 @@ class ClientComms {
                         }
                     },
                     maintainAspectRatio: false
-                }} ref={ref => {
-                    console.log(`Ref for ${productName} added.`);
-                    this.#chartRefs.push(ref);
-                }} redraw/>
-                </div>); // Note: Do NOT remove redraw={true}
+                }} ref={ref => { this.#chartRefs.push(ref); }} redraw/>
+                </div>); // Note: Do NOT remove redraw. It will cause a crash when rendering for the 3rd time.
             ind += 1;
         }
         this.setImageReady(true);
@@ -175,12 +187,20 @@ export default function App() {
     comms.setCharts = setCharts;
     const [error, setError] = useState(null);
     comms.setError = setError;
-    console.log(`Charts: ${JSON.stringify(charts)}`);
+    const [prodName, setProdName] = useState("productName");
+    const [revName, setRevName] = useState("reviews");
+    //console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
     <form className="input-form" id="input-form">
+        <label htmlFor="prod-name-input">Product name column name:</label> <br />
+        <input type="text" id="prod-name-input" name="prod-name-input" title="Must not contain spaces." value={prodName} onChange={e => setProdName(e.target.value)}/> <br />
+
+        <label htmlFor="rev-name-input">Reviews column name:</label> <br />
+        <input type="text" id="rev-name-input" name="rev-name-input" title="Must not contain spaces." value={revName} onChange={e => setRevName(e.target.value)}/> <br />
+
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
         <input type="file" id="file-input" name="file-input" accept=".csv"/> <br />
-        <button onClick={comms.prepareSubmit.bind(comms)} type="button">Submit</button> <br />
+        <button onClick={comms.prepareSubmit.bind(comms, prodName, revName)} type="button">Submit</button> <br />
     </form>
     <div className="error-area">{error == null ? "" : error}</div>
     {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}

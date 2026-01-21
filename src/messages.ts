@@ -27,14 +27,18 @@ export class MsgImage {
     }
 }
 
-/**Contains the entirety of the file as a string.*/
+/**Contains the entirety of the file as a string, as well as header names.*/
 export class MsgCsv {
     clientKey: string
     data: string
+    prodName: string
+    revName: string
 
-    constructor(clientKey: string, data: string) {
+    constructor(clientKey: string, data: string, prodName: string, revName: string) {
         this.clientKey = clientKey
         this.data = data
+        this.prodName = prodName
+        this.revName = revName
     }
 }
 
