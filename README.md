@@ -14,3 +14,20 @@ XiMnet internship assignment 1: sentiment analysis
 3. Press submit and wait.
 4. Pie charts showing the amount of positive and negative reviews for each product will be shown.
 5. If an error message occurs, try to fix it.
+
+# Testing
+- The default full testing dataset is ./testing/dataset.csv. Note that it has 205,000 rows.
+- ./testing/selector.py can be used to obtain a randomly extracted sample of dataset.csv.
+- To use it, run it and a file called testData.csv will appear in its directory containing the output.
+- By default, it selects 20 points from dataset.csv and extracts a series of 20 rows starting from each point, for 20*20 = 400 rows in total, along with 1 header row
+- Several settings are configurable by modifying variables in the file:
+  - PRODUCT_NAME is the name of the product name column.
+  - REVIEW is the name of the reviews column.
+  - STREAK_COUNT is how many points to take from.
+  - STREAK_LENGTH is how many rows to take starting from each point.
+  - SELECTOR is a rule for choosing which columns appear in the output. The two options already available are allSelector (all columns) and onlyRequiredSelector (only the product name and review columns). Ant function taking one string and returning a boolean will do. Column names are fed in, and a returned True value indicates that colum should be included.
+- Running ./testing/test.py will input testData.csv into the anlyser function.
+  - The PRODUCT_NAME and REVIEW variables fulfill the same function as in selector.py.
+  - When complete, it will output the amount of rows, time taken, and result.
+  - Note that files are opened assuming a UTF-8 encoding.
+  - Also note that dataset.csv contains many strange code points (already present in the source). \u escape sequences or unrecognised character marks in the output are to be expected.
