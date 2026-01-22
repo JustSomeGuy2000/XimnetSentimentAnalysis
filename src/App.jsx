@@ -225,10 +225,10 @@ export default function App() {
     return (<>
     <form className="input-form" id="input-form">
         <label htmlFor="prod-name-input">Product name column name:</label> <br />
-        <input type="text" id="prod-name-input" name="prod-name-input" title="Must not contain spaces." value={prodName} onChange={e => setProdName(e.target.value)}/> <br />
+        <input type="text" id="prod-name-input" name="prod-name-input" value={prodName} onChange={e => setProdName(e.target.value)}/> <br />
 
         <label htmlFor="rev-name-input">Reviews column name:</label> <br />
-        <input type="text" id="rev-name-input" name="rev-name-input" title="Must not contain spaces." value={revName} onChange={e => setRevName(e.target.value)}/> <br />
+        <input type="text" id="rev-name-input" name="rev-name-input" value={revName} onChange={e => setRevName(e.target.value)}/> <br />
 
         <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
         <input type="file" id="file-input" name="file-input" accept=".csv"/> <br />
