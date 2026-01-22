@@ -9,9 +9,7 @@ import asyncio
 import pydantic as pyd
 import websockets as ws
 from src.process import analyse
-from typing import Literal, Callable, Awaitable, TypeVar
-
-T = TypeVar("T")
+from typing import Literal, Callable, Awaitable
 
 class Headers(enum.Enum):
     INCOMING_KEY = "incoming_key"

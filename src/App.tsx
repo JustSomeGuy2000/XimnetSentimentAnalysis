@@ -35,7 +35,7 @@ class ClientComms {
         this.#reader.addEventListener("error", e => {
             console.log(`Error in reading file: ${e}.`)
             this.setError("Error in reading file.")
-            this.setImageReady(true)
+            this.setImageReady(false)
         })
         this.setError(null)
     }
@@ -83,6 +83,7 @@ class ClientComms {
     }
 
     prepareSubmit(prodName: string, revName: string) {
+        this.setError(null)
         this.#prodName = prodName
         this.#revName = revName
         const ls = window.localStorage
@@ -150,9 +151,9 @@ class ClientComms {
     }
 
     #handleIncomingImage(msg: MsgImage) {
-        this.setError(null)
         const rawData = JSON.parse(msg.data)
         let data
+
         if ("error" in rawData) {
             this.setError(`Error: ${rawData.error}`)
             this.#stopLoading()
@@ -160,34 +161,28 @@ class ClientComms {
         } else {
             data = rawData as SentimentAnalysisResult
         }
+
         for (const ref of this.#chartRefs) {
             if (ref !== null) {
                 ref.destroy()
             }
         }
-        this.#chartRefs = []
-        const labels = ["Positive", "Negative"]
-        let ind = 0
-        let tempCharts = []
+
+        const accumulatedData: {[index: string]: {"p": number, "n": number, "e": number}} = {}
         for (const productName in data) {
-            const chart: ChartData<"pie"> = {
-                labels: labels,
-                datasets: [
-                    {
-                        label: "Number of reviews",
-                        data: [data[productName]["p"], data[productName]["n"]],
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.2)',
-                            'rgba(255, 99, 132, 0.2)',
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 99, 132, 1)', 
-                        ],
-                        borderWidth: 1,
-                    }
-                ],
+            const sentiments = {"p": 0, "n": 0, "e": 0}
+            for (const sent of data[productName]) {
+                sentiments[sent] += 1
             }
+            accumulatedData[productName] = sentiments
+        }
+
+        this.#chartRefs = []
+        const labels = ["Positive", "Neutral", "Negative"]
+        let ind = 0
+        const tempCharts = []
+        for (const productName in accumulatedData) {
+            const chart = this.#pieData(accumulatedData[productName])
             tempCharts.push(
                 <div className="chart-container" key={productName}>
                     <Pie className="sentiment-chart" data={chart} options={{
@@ -206,6 +201,29 @@ class ClientComms {
         this.setImageReady(true)
         this.setCharts(tempCharts)
         console.log("Setting image as ready")
+    }
+
+    #pieData(data: {"p": number, "n": number, "e": number}): ChartData<"pie"> {
+        return {
+            labels: ["Positive", "Neutral", "Negative"],
+            datasets: [
+                {
+                    label: "Number of reviews",
+                    data: [data["p"], data["e"], data["n"]],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(130, 130, 130, 0.2)',
+                        'rgba(255, 99, 132, 0.2)',
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(130, 130, 130, 1)',
+                        'rgba(255, 99, 132, 1)',
+                    ],
+                    borderWidth: 1,
+                }
+            ],
+        }
     }
 
     #handleIncomingKey(msg: MsgKey) {

@@ -1,6 +1,7 @@
 import io
 import json
 import pandas as pd
+from typing import Literal
 import transformers as tf
 
 MODEL = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
@@ -24,16 +25,13 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
     Delimiter is a standalone comma.
 
     ## Output
-    JSON in format: {
 
-        productName1: {
-
-            "p": number of positive reviews, 
-            "n": number of negative reviews
-            
-            }, 
-        productName2: ...
+    JSON: {
+        [index: string]: ("p" | "n" | "e")[]
     }
+    Each index string is a product name, and the list of characters indicates the sentiments of each review, in input order.
+
+    "p" = positive, "n" = negative, "e" = neutral
 
     {"error": error description} is returned if an error occurred.'''
     try:
@@ -49,18 +47,21 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
                 products[ser[prodName]].append(ser[revName])
             else:
                 products[ser[prodName]] = [ser[revName]]
-        sentiments: dict[str, dict[str, int]] = {} #In the value list, first item is positives and second is negatives
+                
+        sentiments: dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]]] = {} #In the value list, first item is positives and second is negatives
         for name, revNames in products.items():
-            sentimentDict = {"p": 0, "n": 0}
+            sentimentList: list[Literal["p"] | Literal["n"] | Literal["e"]] = []
             rawSentiments = pipeline(revNames)
             for rawSent in rawSentiments:
                 if rawSent["label"] == "POSITIVE":
-                    sentimentDict["p"] += 1
+                    sentimentList.append("p")
                 elif rawSent["label"] == "NEGATIVE":
-                    sentimentDict["n"] += 1
+                    sentimentList.append("n")
+                elif rawSent["label"] == "NEUTRAL":
+                    sentimentList.append("e")
                 else:
                     print(f"Unknown value received from model: {rawSent}")
-            sentiments[name] = sentimentDict
+            sentiments[name] = sentimentList
         return json.dumps(sentiments)
     except Exception as e:
         return json.dumps({"error": str(e)})

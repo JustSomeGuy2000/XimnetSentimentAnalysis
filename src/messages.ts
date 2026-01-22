@@ -4,10 +4,7 @@ export type Message = {
 }
 
 export type SentimentAnalysisResult = {
-    [index: string]: {
-        "p": number,
-        "n": number
-    },
+    [index: string]: ("p" | "n" | "e")[],
 }
 
 export type SentimentAnalysisError = {
