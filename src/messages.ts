@@ -4,7 +4,10 @@ export type Message = {
 }
 
 export type SentimentAnalysisResult = {
-    [index: string]: ("p" | "n" | "e")[],
+    [index: string]: {
+        sentiments: ("p" | "n" | "e")[],
+        reviews: string[]
+    },
 }
 
 export type SentimentAnalysisError = {

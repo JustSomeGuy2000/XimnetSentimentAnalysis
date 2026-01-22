@@ -4,6 +4,8 @@ import pandas as pd
 from typing import Literal
 import transformers as tf
 
+type sentimentsJson = dict[str, dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]] | list[str]]]
+
 MODEL = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
 pipeline = tf.pipeline("text-classification", model=MODEL, device="cpu")
 
@@ -27,7 +29,10 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
     ## Output
 
     JSON: {
-        [index: string]: ("p" | "n" | "e")[]
+        [index: string]: {
+            sentiments: ("p" | "n" | "e")[],
+            reviews: string[]
+        }
     }
     Each index string is a product name, and the list of characters indicates the sentiments of each review, in input order.
 
@@ -48,10 +53,10 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
             else:
                 products[ser[prodName]] = [ser[revName]]
                 
-        sentiments: dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]]] = {} #In the value list, first item is positives and second is negatives
-        for name, revNames in products.items():
+        sentiments: sentimentsJson = {} #In the value list, first item is positives and second is negatives
+        for name, reviews in products.items():
             sentimentList: list[Literal["p"] | Literal["n"] | Literal["e"]] = []
-            rawSentiments = pipeline(revNames)
+            rawSentiments = pipeline(reviews)
             for rawSent in rawSentiments:
                 if rawSent["label"] == "POSITIVE":
                     sentimentList.append("p")
@@ -61,7 +66,7 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
                     sentimentList.append("e")
                 else:
                     print(f"Unknown value received from model: {rawSent}")
-            sentiments[name] = sentimentList
+            sentiments[name] = {"sentiments": sentimentList, "reviews": reviews}
         return json.dumps(sentiments)
     except Exception as e:
         return json.dumps({"error": str(e)})

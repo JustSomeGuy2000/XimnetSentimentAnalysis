@@ -171,19 +171,18 @@ class ClientComms {
         const accumulatedData: {[index: string]: {"p": number, "n": number, "e": number}} = {}
         for (const productName in data) {
             const sentiments = {"p": 0, "n": 0, "e": 0}
-            for (const sent of data[productName]) {
+            for (const sent of data[productName].sentiments) {
                 sentiments[sent] += 1
             }
             accumulatedData[productName] = sentiments
         }
 
         this.#chartRefs = []
-        const labels = ["Positive", "Neutral", "Negative"]
         let ind = 0
         const tempCharts = []
         for (const productName in accumulatedData) {
             const chart = this.#pieData(accumulatedData[productName])
-            tempCharts.push(
+            tempCharts.push(<div className="sentiment-analysis-container">
                 <div className="chart-container" key={productName}>
                     <Pie className="sentiment-chart" data={chart} options={{
                         plugins: {
@@ -194,6 +193,8 @@ class ClientComms {
                         },
                         maintainAspectRatio: false
                     }} ref={ref => { this.#chartRefs.push(ref as (ChartJS<"pie"> | null))}} redraw/>
+                </div>
+                {this.#pieTable(data[productName].reviews, data[productName].sentiments)} 
                 </div>) // Note: Do NOT remove redraw. It will cause a crash when rendering for the 3rd time.
             ind += 1
         }
@@ -224,6 +225,25 @@ class ClientComms {
                 }
             ],
         }
+    }
+
+    #pieTable(reviews: string[], sents: ("p" | "e" | "n")[]): React.JSX.Element {
+        const labels: {p: "Positive", n: "Negative", e: "Neutral"} = {p: "Positive", n: "Negative", e: "Neutral"}
+        const classes = {Positive: "sent-pos", Negative: "sent-neg", Neutral: "sent-neut"}
+        const zipped = reviews.map((val, ind) => {return {review: val, sent: labels[sents[ind]]}})
+        const rows = zipped.map(({review, sent}) => {
+            return (<tr>
+                <td>{review}</td>
+                <td className={classes[sent]}>{sent}</td>
+            </tr>)
+        })
+        return (<table className="sentiment-table">
+            <tr>
+                <th>Review</th>
+                <th>Sentiment</th>
+            </tr>
+            {rows}
+        </table>)
     }
 
     #handleIncomingKey(msg: MsgKey) {

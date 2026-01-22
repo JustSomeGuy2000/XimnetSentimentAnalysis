@@ -30,7 +30,7 @@ class ClientComms {
         this.#reader.addEventListener("error", e => {
             console.log(`Error in reading file: ${e}.`);
             this.setError("Error in reading file.");
-            this.setImageReady(true);
+            this.setImageReady(false);
         });
         this.setError(null);
     }
@@ -75,6 +75,7 @@ class ClientComms {
         }
     }
     prepareSubmit(prodName, revName) {
+        this.setError(null);
         this.#prodName = prodName;
         this.#revName = revName;
         const ls = window.localStorage;
@@ -138,7 +139,6 @@ class ClientComms {
         this.#loadingIntervalID = null;
     }
     #handleIncomingImage(msg) {
-        this.setError(null);
         const rawData = JSON.parse(msg.data);
         let data;
         if ("error" in rawData) {
@@ -157,18 +157,18 @@ class ClientComms {
         const accumulatedData = {};
         for (const productName in data) {
             const sentiments = { "p": 0, "n": 0, "e": 0 };
-            for (const sent of data[productName]) {
+            for (const sent of data[productName].sentiments) {
                 sentiments[sent] += 1;
             }
             accumulatedData[productName] = sentiments;
         }
         this.#chartRefs = [];
-        const labels = ["Positive", "Neutral", "Negative"];
         let ind = 0;
         const tempCharts = [];
         for (const productName in accumulatedData) {
-            const chart = this.#pieData({ data: accumulatedData[productName] });
-            tempCharts.push(<div className="chart-container" key={productName}>
+            const chart = this.#pieData(accumulatedData[productName]);
+            tempCharts.push(<div className="sentiment-analysis-container">
+                <div className="chart-container" key={productName}>
                     <Pie className="sentiment-chart" data={chart} options={{
                     plugins: {
                         title: {
@@ -178,6 +178,8 @@ class ClientComms {
                     },
                     maintainAspectRatio: false
                 }} ref={ref => { this.#chartRefs.push(ref); }} redraw/>
+                </div>
+                {this.#pieTable(data[productName].reviews, data[productName].sentiments)} 
                 </div>); // Note: Do NOT remove redraw. It will cause a crash when rendering for the 3rd time.
             ind += 1;
         }
@@ -186,7 +188,7 @@ class ClientComms {
         this.setCharts(tempCharts);
         console.log("Setting image as ready");
     }
-    #pieData({ data }) {
+    #pieData(data) {
         return {
             labels: ["Positive", "Neutral", "Negative"],
             datasets: [
@@ -207,6 +209,24 @@ class ClientComms {
                 }
             ],
         };
+    }
+    #pieTable(reviews, sents) {
+        const labels = { p: "Positive", n: "Negative", e: "Neutral" };
+        const classes = { Positive: "sent-pos", Negative: "sent-neg", Neutral: "sent-neut" };
+        const zipped = reviews.map((val, ind) => { return { review: val, sent: labels[sents[ind]] }; });
+        const rows = zipped.map(({ review, sent }) => {
+            return (<tr>
+                <td>{review}</td>
+                <td className={classes[sent]}>{sent}</td>
+            </tr>);
+        });
+        return (<table className="sentiment-table">
+            <tr>
+                <th>Review</th>
+                <th>Sentiment</th>
+            </tr>
+            {rows}
+        </table>);
     }
     #handleIncomingKey(msg) {
         this.#clientKey = msg.clientKey;

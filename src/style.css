@@ -1,4 +1,3 @@
-
 .chart-display-area {
     display: flex;
     flex-wrap: wrap;
@@ -6,6 +5,34 @@
     align-content: flex-start;
 }
 
+.sentiment-analysis-container {
+    margin: 20px;
+}
+
 .chart-container {
     position: relative;
+}
+
+.sentiment-table, .sentiment-table th, .sentiment-table td {
+    border: 1px solid black;
+}
+
+.sentiment-table {
+    width: 100%;
+    max-width: 100vh;
+    margin: 10px
+}
+
+.sent-pos {
+    background-color: greenyellow;
+}
+
+.sent-neg {
+    background-color: red;
+    color: white
+}
+
+.sent-neut {
+    background-color: gray;
+    color: white
 }
