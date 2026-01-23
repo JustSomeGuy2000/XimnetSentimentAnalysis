@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey, SentimentAnalysisResult } from "./messages.js"
+import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey, SentimentAnalysisError, SentimentAnalysisResult } from "./messages.js"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartData, Title } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import { Form, Button } from "react-bootstrap";
@@ -18,10 +18,12 @@ const PROD_NAME_KEY = "productName"
 const REV_NAME_KEY = "revName"
 
 class ClientComms {
-    setImageReady: (to: boolean) => void = (_) => console.log("Image setter not yet provided.")
-    setCharts: (to: React.JSX.Element[]) => void = (_) => console.log("Chart setter not yet provided.")
-    setError: (to: string | null) => void = (_) => console.log("Error setter not yet provided.")
-    setLoading: (to: string) => void = (_) => console.log("Loading setter not yet provided.")
+    setImageReady: (to: boolean) => void = to => console.log(`Setting image ready before setter provided: ${to}`)
+    setCharts: (to: React.JSX.Element[]) => void = to => console.log(`Setting chart before setter provided: ${to}`)
+    setError: (to: string | null) => void = to => console.log(`Setting error before setter provided: ${to}`)
+    setLoading: (to: string) => void = to => console.log(`Setting loading before setter provided: ${to}`)
+    setInfer: (to: boolean) => void = (to) => console.log(`Setting infer before setter provided: ${to}`)
+    infer: boolean = true
     #ws: WebSocket
     #reader: FileReader
     #clientKey: string
@@ -85,19 +87,19 @@ class ClientComms {
         }
     }
 
-    prepareSubmit(prodName: string, revName: string) {
+    prepareSubmit() {
         this.setError(null)
-        this.#prodName = prodName
-        this.#revName = revName
+        this.#prodName = (document.getElementById("prod-name-input") as (HTMLInputElement | null))?.value ?? ""
+        this.#revName = (document.getElementById("rev-name-input") as (HTMLInputElement | null))?.value ?? ""
         const ls = window.localStorage
         ls.setItem(PROD_NAME_KEY, this.#prodName)
         ls.setItem(REV_NAME_KEY, this.#revName)
-        if (this.#prodName == this.#revName) {
+        if (!this.infer && this.#prodName == this.#revName) {
             this.setError("Product name column name and reviews column name cannot be the same.")
             return
         }
-        if (this.#prodName == "" || this.#revName == "") {
-            this.setError("Column names cannot be empty.")
+        if (!this.infer && (this.#prodName == "" || this.#revName == "")) {
+            this.setError("Either column name cannot be empty.")
             return
         }
         document.querySelector(".input-form")?.querySelectorAll("input").forEach(input => {
@@ -129,7 +131,7 @@ class ClientComms {
             console.log("Upload to server failed.")
             this.setError("Upload to server failed.")
         }
-        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName)))
+        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName, this.infer)))
         console.log("Outgoing: CSV")
         this.#startLoading()
     }
@@ -158,7 +160,11 @@ class ClientComms {
         let data
 
         if ("error" in rawData) {
-            this.setError(`Error: ${rawData.error}`)
+            data = rawData as SentimentAnalysisError
+            if (data.inferFailure) {
+                this.setInfer(false)
+            }
+            this.setError(`Error: ${data.error}`)
             this.#stopLoading()
             return
         } else {
@@ -269,13 +275,23 @@ export default function App() {
     comms.setCharts = setCharts
     const [error, setError] = useState<string | null>(null)
     comms.setError = setError
-    const [prodName, setProdName] = useState(savedProdName)
-    const [revName, setRevName] = useState(savedRevName)
     const [loadingText, setLoadingText] = useState("")
     comms.setLoading = setLoadingText
+    const [infer, setInfer] = useState(true)
+    comms.setInfer = setInfer
+    comms.infer = infer
     //console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
     <Form className="input-form m-3" id="input-form">
+        <Form.Group controlId="infer-select" className="form-input-group">
+            <Form.Label>Choose column name type:</Form.Label>
+            <Form.Select id="infer-select" value={infer ? "infer" : "specify"} onChange={(e) => {setInfer(e.target.value === "infer")}}>
+                <option value="infer">Infer</option>
+                <option value="specify">Specify</option>
+            </Form.Select>
+            <Form.Text className="text-muted">Manually specify or allow the program to infer which columns are considered the product name and product review columns.</Form.Text>
+        </Form.Group>
+        {!infer ? <>
         <Form.Group controlId="prod-name-input" className="form-input-group">
             <Form.Label>Enter product name column name:</Form.Label>
             <Form.Control type="text" id="prod-name-input" className="form-input" defaultValue={savedProdName}/>
@@ -284,11 +300,12 @@ export default function App() {
             <Form.Label>Enter product name column name:</Form.Label>
             <Form.Control type="text" id="rev-name-input" className="form-input" defaultValue={savedRevName}/>
         </Form.Group>
+        </> : <></>}
         <Form.Group controlId="file-input" className="form-input-group">
             <Form.Label>Select CSV file:</Form.Label>
             <Form.Control type="file" id="file-input" className="form-input" accept=".csv"/>
         </Form.Group>
-        <Button className="form-input-group" variant="primary" type="button" onClick={comms.prepareSubmit.bind(comms, prodName, revName)}>Submit</Button>
+        <Button className="form-input-group" variant="primary" type="button" onClick={comms.prepareSubmit.bind(comms)}>Submit</Button>
         <div className="error-area">{error == null ? "" : error}</div>
         <div className="loading-area">{loadingText}</div>
     </Form>

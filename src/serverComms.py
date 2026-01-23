@@ -37,6 +37,7 @@ class MsgImage(pyd.BaseModel):
 class JsonCsv(pyd.BaseModel):
     clientKey: str
     data: str
+    infer: bool
     prodName: str
     revName: str
 
@@ -129,9 +130,9 @@ class ServerComms:
     async def handleMsgClose(self, msg: MsgClose):
         await self.closeConnection(msg.clientKey)
 
-    async def handleCsv(self, clientKey: str, data: str, prodName: str, revName: str):
+    async def handleCsv(self, clientKey: str, data: str, infer: bool, prodName: str, revName: str):
         print("Incoming: CSV")
-        result = asyncio.ensure_future(analyse(data, prodName, revName))
+        result = asyncio.ensure_future(analyse(data, infer, prodName, revName))
         result.add_done_callback(lambda task: asyncio.ensure_future(self.send(self.clients[clientKey], MsgImage(clientKey=clientKey, data=task.result()).model_dump_json())))
 
     async def callbackPing(self): 

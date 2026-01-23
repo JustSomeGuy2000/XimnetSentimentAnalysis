@@ -13,10 +13,12 @@ document.addEventListener("DOMContentLoaded", (_) => {
 const PROD_NAME_KEY = "productName";
 const REV_NAME_KEY = "revName";
 class ClientComms {
-    setImageReady = (_) => console.log("Image setter not yet provided.");
-    setCharts = (_) => console.log("Chart setter not yet provided.");
-    setError = (_) => console.log("Error setter not yet provided.");
-    setLoading = (_) => console.log("Loading setter not yet provided.");
+    setImageReady = to => console.log(`Setting image ready before setter provided: ${to}`);
+    setCharts = to => console.log(`Setting chart before setter provided: ${to}`);
+    setError = to => console.log(`Setting error before setter provided: ${to}`);
+    setLoading = to => console.log(`Setting loading before setter provided: ${to}`);
+    setInfer = (to) => console.log(`Setting infer before setter provided: ${to}`);
+    infer = true;
     #ws;
     #reader;
     #clientKey;
@@ -76,19 +78,19 @@ class ClientComms {
             console.log(`Received malformed message: ${message}`);
         }
     }
-    prepareSubmit(prodName, revName) {
+    prepareSubmit() {
         this.setError(null);
-        this.#prodName = prodName;
-        this.#revName = revName;
+        this.#prodName = document.getElementById("prod-name-input")?.value ?? "";
+        this.#revName = document.getElementById("rev-name-input")?.value ?? "";
         const ls = window.localStorage;
         ls.setItem(PROD_NAME_KEY, this.#prodName);
         ls.setItem(REV_NAME_KEY, this.#revName);
-        if (this.#prodName == this.#revName) {
+        if (!this.infer && this.#prodName == this.#revName) {
             this.setError("Product name column name and reviews column name cannot be the same.");
             return;
         }
-        if (this.#prodName == "" || this.#revName == "") {
-            this.setError("Column names cannot be empty.");
+        if (!this.infer && (this.#prodName == "" || this.#revName == "")) {
+            this.setError("Either column name cannot be empty.");
             return;
         }
         document.querySelector(".input-form")?.querySelectorAll("input").forEach(input => {
@@ -119,7 +121,7 @@ class ClientComms {
             console.log("Upload to server failed.");
             this.setError("Upload to server failed.");
         };
-        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName)));
+        request.send(JSON.stringify(new MsgCsv(this.#clientKey, data, this.#prodName, this.#revName, this.infer)));
         console.log("Outgoing: CSV");
         this.#startLoading();
     }
@@ -144,7 +146,11 @@ class ClientComms {
         const rawData = JSON.parse(msg.data);
         let data;
         if ("error" in rawData) {
-            this.setError(`Error: ${rawData.error}`);
+            data = rawData;
+            if (data.inferFailure) {
+                this.setInfer(false);
+            }
+            this.setError(`Error: ${data.error}`);
             this.#stopLoading();
             return;
         }
@@ -247,13 +253,23 @@ export default function App() {
     comms.setCharts = setCharts;
     const [error, setError] = useState(null);
     comms.setError = setError;
-    const [prodName, setProdName] = useState(savedProdName);
-    const [revName, setRevName] = useState(savedRevName);
     const [loadingText, setLoadingText] = useState("");
     comms.setLoading = setLoadingText;
+    const [infer, setInfer] = useState(true);
+    comms.setInfer = setInfer;
+    comms.infer = infer;
     //console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
     <Form className="input-form m-3" id="input-form">
+        <Form.Group controlId="infer-select" className="form-input-group">
+            <Form.Label>Choose column name type:</Form.Label>
+            <Form.Select id="infer-select" value={infer ? "infer" : "specify"} onChange={(e) => { setInfer(e.target.value === "infer"); }}>
+                <option value="infer">Infer</option>
+                <option value="specify">Specify</option>
+            </Form.Select>
+            <Form.Text className="text-muted">Manually specify or allow the program to infer which columns are considered the product name and product review columns.</Form.Text>
+        </Form.Group>
+        {!infer ? <>
         <Form.Group controlId="prod-name-input" className="form-input-group">
             <Form.Label>Enter product name column name:</Form.Label>
             <Form.Control type="text" id="prod-name-input" className="form-input" defaultValue={savedProdName}/>
@@ -262,11 +278,12 @@ export default function App() {
             <Form.Label>Enter product name column name:</Form.Label>
             <Form.Control type="text" id="rev-name-input" className="form-input" defaultValue={savedRevName}/>
         </Form.Group>
+        </> : <></>}
         <Form.Group controlId="file-input" className="form-input-group">
             <Form.Label>Select CSV file:</Form.Label>
             <Form.Control type="file" id="file-input" className="form-input" accept=".csv"/>
         </Form.Group>
-        <Button className="form-input-group" variant="primary" type="button" onClick={comms.prepareSubmit.bind(comms, prodName, revName)}>Submit</Button>
+        <Button className="form-input-group" variant="primary" type="button" onClick={comms.prepareSubmit.bind(comms)}>Submit</Button>
         <div className="error-area">{error == null ? "" : error}</div>
         <div className="loading-area">{loadingText}</div>
     </Form>

@@ -26,15 +26,15 @@ serverComms = sc.ServerComms()
 async def handleCsv(msg: Annotated[Any, fast.Body()]):
     try:
         message = json.loads(msg)
-        if "clientKey" in message and "data" in message and "prodName" in message and "revName" in message:
-            await serverComms.handleCsv(message["clientKey"], message["data"], message["prodName"], message["revName"])
+        if "clientKey" in message:
+            await serverComms.handleCsv(message["clientKey"], message["data"], message["infer"], message["prodName"], message["revName"])
         else:
             print(f"Received malformed JSON: {message}")
     except Exception as e:
         print(f"Error in CSV handling: {e}: {tb.format_tb(e.__traceback__)}") # Enable in production
 async def handleCsvOri(msg: sc.JsonCsv):
     '''The original CSV handler. The server rejects what seems like perfectly good JSON, so I'm putting this on the back burner until I can figure it out. The other version works fine anyways.'''
-    await serverComms.handleCsv(msg.clientKey, msg.data, msg.prodName, msg.revName)
+    await serverComms.handleCsv(msg.clientKey, msg.data, msg.infer, msg.prodName, msg.revName)
 
 dir = os.path.dirname(os.path.abspath(__file__))
 

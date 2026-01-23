@@ -3,16 +3,17 @@ import json
 import time as t
 import pandas as pd
 import transformers as tf
-from typing import Literal, Callable, Coroutine, Any
+from typing import Literal, Callable, Coroutine
 
 type SentimentsJson = dict[str, dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]] | list[str]]]
 type TestResults = dict[Literal["start"] | Literal["end"] | Literal["memory"] | Literal["rows"], object]
 
-#MODEL = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
+COLUMN_NAMES = ["review", "reviews", "productname", "product_name", "product name"]
+
 MODEL = "tabularisai/multilingual-sentiment-analysis"
 pipeline = tf.pipeline("text-classification", model=MODEL, device="cpu")
 
-async def analyse(data: str, prodName: str, revName: str, testResults: TestResults = {}) -> str:
+async def analyse(data: str, infer: bool, prodName: str, revName: str, testResults: TestResults = {}) -> str:
     '''Analyse a CSV string containing product reviews according to a certain schema and return a sentiment analysis. <br />
     ## Schema
     Exactly 2 fields matching the provided product field and review field names expected (case-sensitive).
@@ -44,12 +45,18 @@ async def analyse(data: str, prodName: str, revName: str, testResults: TestResul
     {"error": error description} is returned if an error occurred.'''
     try:
         testResults["start"] = t.time()
-        readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=lambda c: str(c) in [prodName, revName], dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
+        colSelector = (lambda c: str(c).lower() in COLUMN_NAMES) if infer else (lambda c: str(c) in [prodName, revName])
+        readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=colSelector, dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
         cols = len(readData.columns)
         if cols < 2:
-            return json.dumps({"error": "Provided names not found."})
+            if infer:
+                return json.dumps({"error": "Inference failure. Please specify column names.", "inferFailure": True})
+            return json.dumps({"error": "Provided names not found.", "inferFailure": False})
         elif cols > 2:
-            return json.dumps({"error": f"Too many columns ({cols}) match provided names"})
+            if infer:
+                return json.dumps({"error": "Inference failure. Please specify column names.", "inferFailure": True})
+            return json.dumps({"error": f"Too many columns ({cols}) match provided names", "inferFailure": False})
+        
         products: dict[str, list[str]] = {}
         for _, ser in readData.iterrows():
             if ser[prodName] in products:
@@ -78,4 +85,4 @@ async def analyse(data: str, prodName: str, revName: str, testResults: TestResul
     except Exception as e:
         return json.dumps({"error": str(e)})
     
-analyser: Callable[[str, str, str, TestResults], Coroutine[None, None, str]] = analyse
+analyser: Callable[[str, bool, str, str, TestResults], Coroutine[None, None, str]] = analyse

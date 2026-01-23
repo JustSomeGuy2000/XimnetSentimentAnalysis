@@ -13,11 +13,13 @@ export class MsgImage {
 export class MsgCsv {
     clientKey;
     data;
+    infer;
     prodName;
     revName;
-    constructor(clientKey, data, prodName, revName) {
+    constructor(clientKey, data, prodName, revName, infer) {
         this.clientKey = clientKey;
         this.data = data;
+        this.infer = infer;
         this.prodName = prodName;
         this.revName = revName;
     }

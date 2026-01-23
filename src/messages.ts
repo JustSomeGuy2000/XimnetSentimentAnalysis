@@ -12,6 +12,7 @@ export type SentimentAnalysisResult = {
 
 export type SentimentAnalysisError = {
     error: string
+    inferFailure: boolean
 }
 
 export const HEADER_INCOMING_IMAGE = "incoming_image"
@@ -31,12 +32,14 @@ export class MsgImage {
 export class MsgCsv {
     clientKey: string
     data: string
+    infer: boolean
     prodName: string
     revName: string
 
-    constructor(clientKey: string, data: string, prodName: string, revName: string) {
+    constructor(clientKey: string, data: string, prodName: string, revName: string, infer: boolean) {
         this.clientKey = clientKey
         this.data = data
+        this.infer = infer
         this.prodName = prodName
         this.revName = revName
     }
