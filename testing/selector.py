@@ -1,3 +1,4 @@
+import io
 import os
 import random as r
 import pandas as pd
@@ -18,17 +19,29 @@ SELECTOR = onlyRequiredSelector
 
 dirPath = os.path.dirname(os.path.realpath(__file__))
 
-with open(f"{dirPath}/dataset.csv", encoding="utf-8") as data:
-    readData = pd.read_csv(data, sep=",", header=0, usecols=SELECTOR, dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", encoding="utf-8")
-    cols = len(readData.index) - STREAK_LENGTH
-    outList: list[pd.DataFrame] = []
-    used: list[tuple[int, int]] = []
-    for i in range(STREAK_COUNT):
-        ind = r.randrange(0, cols)
-        while (ind, ind + STREAK_LENGTH) in used:
+def select(streakCount = STREAK_COUNT, streakLength = STREAK_LENGTH, selector = SELECTOR, oriData: io.TextIOWrapper | None = None):
+    if oriData == None:
+        data = open(f"{dirPath}/dataset.csv", encoding="utf-8")
+    else:
+        data = oriData
+        
+    try:
+        readData = pd.read_csv(data, sep=",", header=0, usecols=selector, dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", encoding="utf-8")
+        cols = len(readData.index) - streakLength
+        outList: list[pd.DataFrame] = []
+        used: list[tuple[int, int]] = []
+        for _ in range(streakCount):
             ind = r.randrange(0, cols)
-        used.append((ind, ind + STREAK_LENGTH))
-        outList.append(readData[ind:ind + STREAK_LENGTH])
-    outData = pd.concat(outList)
-    print("Noot noot!")
-    outData.to_csv(f"{dirPath}/testData.csv", index=False)
+            while (ind, ind + streakLength) in used:
+                ind = r.randrange(0, cols)
+            used.append((ind, ind + streakLength))
+            outList.append(readData[ind:ind + streakLength])
+        outData = pd.concat(outList)
+        print("Noot noot!")
+        outData.to_csv(f"{dirPath}/testData.csv", index=False)
+    finally:
+        if oriData == None:
+            data.close()
+
+if __name__ == "__main__":
+    select()

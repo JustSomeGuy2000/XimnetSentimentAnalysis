@@ -2,13 +2,36 @@ import io
 import json
 import time as t
 import pandas as pd
+import functools as ft
 import transformers as tf
 from typing import Literal, Callable, Coroutine
 
 type SentimentsJson = dict[str, dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]] | list[str]]]
 type TestResults = dict[Literal["start"] | Literal["end"] | Literal["memory"] | Literal["rows"], object]
 
-COLUMN_NAMES = ["review", "reviews", "productname", "product_name", "product name"]
+class NamesInfo:
+    def __init__(self):
+        self.prod: str | None = None
+        self.rev: str | None = None
+        self.count: int = 0
+
+POTENTIAL_REV = ["review", "reviews"]
+POTENTIAL_PROD = ["productname", "product_name", "product name"]
+
+def colTest(info: NamesInfo, c: object):
+    name = str(c).lower()
+    ret = False
+    if name in POTENTIAL_PROD:
+        if info.prod == None:
+            ret = True
+        info.prod = name
+        info.count += 1
+    elif name in POTENTIAL_REV:
+        if info.rev == None:
+            ret = True
+        info.rev = name
+        info.count += 1
+    return ret
 
 MODEL = "tabularisai/multilingual-sentiment-analysis"
 pipeline = tf.pipeline("text-classification", model=MODEL, device="cpu")
@@ -45,18 +68,25 @@ async def analyse(data: str, infer: bool, prodName: str, revName: str, testResul
     {"error": error description} is returned if an error occurred.'''
     try:
         testResults["start"] = t.time()
-        colSelector = (lambda c: str(c).lower() in COLUMN_NAMES) if infer else (lambda c: str(c) in [prodName, revName])
-        readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=colSelector, dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
-        cols = len(readData.columns)
-        if cols < 2:
-            if infer:
+
+        if infer:
+            info = NamesInfo()
+            readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=ft.partial(colTest, info), dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
+            cols = info.count
+            if cols < 2:
                 return json.dumps({"error": "Inference failure. Please specify column names.", "inferFailure": True})
-            return json.dumps({"error": "Provided names not found.", "inferFailure": False})
-        elif cols > 2:
-            if infer:
+            elif cols > 2:
                 return json.dumps({"error": "Inference failure. Please specify column names.", "inferFailure": True})
-            return json.dumps({"error": f"Too many columns ({cols}) match provided names", "inferFailure": False})
-        
+            prodName = str(info.prod)
+            revName = str(info.rev)
+        else:
+            readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=(lambda c: str(c) in [prodName, revName]), dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
+            cols = len(readData.columns)
+            if cols < 2:
+                return json.dumps({"error": "Provided names not found.", "inferFailure": False})
+            elif cols > 2:
+                return json.dumps({"error": f"Too many columns ({cols}) match provided names", "inferFailure": False})
+            
         products: dict[str, list[str]] = {}
         for _, ser in readData.iterrows():
             if ser[prodName] in products:

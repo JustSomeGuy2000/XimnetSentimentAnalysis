@@ -285,7 +285,7 @@ export default function App() {
     <Form className="input-form m-3" id="input-form">
         <Form.Group controlId="infer-select" className="form-input-group">
             <Form.Label>Choose column name type:</Form.Label>
-            <Form.Select id="infer-select" value={infer ? "infer" : "specify"} onChange={(e) => {setInfer(e.target.value === "infer")}}>
+            <Form.Select id="infer-select" className="infer-select" value={infer ? "infer" : "specify"} onChange={(e) => {setInfer(e.target.value === "infer")}}>
                 <option value="infer">Infer</option>
                 <option value="specify">Specify</option>
             </Form.Select>
