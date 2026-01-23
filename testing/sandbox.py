@@ -2,16 +2,17 @@ import io
 import json
 import time as t
 import pandas as pd
-from typing import Literal
 import transformers as tf
+from typing import Literal, Callable, Coroutine, Any
 
 type SentimentsJson = dict[str, dict[str, list[Literal["p"] | Literal["n"] | Literal["e"]] | list[str]]]
+type TestResults = dict[Literal["start"] | Literal["end"] | Literal["memory"] | Literal["rows"], object]
 
 #MODEL = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
 MODEL = "tabularisai/multilingual-sentiment-analysis"
 pipeline = tf.pipeline("text-classification", model=MODEL, device="cpu")
 
-async def analyse(data: str, prodName: str, revName: str) -> str:
+async def analyse(data: str, prodName: str, revName: str, testResults: TestResults = {}) -> str:
     '''Analyse a CSV string containing product reviews according to a certain schema and return a sentiment analysis. <br />
     ## Schema
     Exactly 2 fields matching the provided product field and review field names expected (case-sensitive).
@@ -42,6 +43,7 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
 
     {"error": error description} is returned if an error occurred.'''
     try:
+        testResults["start"] = t.time()
         readData = pd.read_csv(io.StringIO(data), sep=",", header=0, usecols=lambda c: str(c) in [prodName, revName], dtype=pd.StringDtype(), skip_blank_lines=True, iterator=False, on_bad_lines="skip", keep_default_na=False)
         cols = len(readData.columns)
         if cols < 2:
@@ -69,6 +71,11 @@ async def analyse(data: str, prodName: str, revName: str) -> str:
                 else:
                     print(f"Unknown value received from model: {rawSent}")
             sentiments[name] = {"sentiments": sentimentList, "reviews": reviews}
+        testResults["end"] = t.time()
+        testResults["memory"] = readData.memory_usage(deep=True)
+        testResults["rows"] = readData.shape[0]
         return json.dumps(sentiments)
     except Exception as e:
         return json.dumps({"error": str(e)})
+    
+analyser: Callable[[str, str, str, TestResults], Coroutine[None, None, str]] = analyse

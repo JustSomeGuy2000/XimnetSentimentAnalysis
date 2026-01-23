@@ -26,8 +26,21 @@ XiMnet internship assignment 1: sentiment analysis
   - STREAK_COUNT is how many points to take from.
   - STREAK_LENGTH is how many rows to take starting from each point.
   - SELECTOR is a rule for choosing which columns appear in the output. The two options already available are allSelector (all columns) and onlyRequiredSelector (only the product name and review columns). Ant function taking one string and returning a boolean will do. Column names are fed in, and a returned True value indicates that colum should be included.
-- Running ./testing/test.py will input testData.csv into the anlyser function.
+- Running ./testing/test.py will input testData.csv into the analyser function from ./testing/sandbox.py. It is the same as in ./src/process.py but with a few extra testing capabilities.
   - The PRODUCT_NAME and REVIEW variables fulfill the same function as in selector.py.
   - When complete, it will output the amount of rows, time taken, and result.
   - Note that files are opened assuming a UTF-8 encoding.
   - Also note that dataset.csv contains many strange code points (already present in the source). \u escape sequences or unrecognised character marks in the output are to be expected.
+
+# Model Notes
+- Model [tabularisai/multilingual-sentiment-analysis](https://huggingface.co/tabularisai/multilingual-sentiment-analysis) from HuggingFace is used.
+  - Out of all the sentiment analysis models I found with multilingual capabilities and 3 or more classification cases, this one had the most monthly downloads.
+- Has 5 classification cases (Very Positive, Positive, Neutral, Negative, Very Negative), but "Positive" and "Very Positive" are consolidated into one final category, as are "Negative" and "Very Negative".
+- Easily tripped up by spelling errors and nonstandard spellings, especially of important sentiment-indicating words, like:
+  - "awesome" -> "aasome"
+  - "good" -> "gud"
+  - "thank you" -> "thankyou"
+- Also has trouble with bad grammar and reviews with multiple sentiments (regarding, for example, different aspects of the product).
+  - Unfortunately, longer reviews in the test dataset tend to also have terrible grammar, compounding the problem.
+- Neutral classification tends to be less accurate than positive or negative.
+- Not that positive or negative classifications are completely accurate either.

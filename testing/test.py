@@ -1,9 +1,9 @@
 import os
-import sys
 import asyncio
-import time as t
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-from src.process import analyse
+import sandbox
+from typing import Literal, Any
+
+type TestResults = dict[Literal["start"] | Literal["end"] | Literal["memory"] | Literal["rows"], Any]
 
 PRODUCT_NAME = "product_name"
 REVIEW = "Summary"
@@ -11,9 +11,10 @@ REVIEW = "Summary"
 dirPath = os.path.dirname(os.path.realpath(__file__))
 
 with open(f"{dirPath}/testData.csv", encoding="utf-8") as file:
-    lines = file.readlines()
-    start = t.time()
-    results = asyncio.run(analyse("\n".join(lines), PRODUCT_NAME, REVIEW))
-    print(f"Lines (excluding header): {len(lines) - 1}")
-    print(f"Time: {t.time() - start} seconds")
+    data = file.read()
+    testResults: TestResults = {}
+    results = asyncio.run(sandbox.analyser(data, PRODUCT_NAME, REVIEW, testResults))
+    print(f"Lines (excluding header): {testResults["rows"]}")
+    print(f"Time: {testResults["end"] - testResults["start"]} seconds")
+    print(f"Memory usage (bytes): {testResults["memory"]}")
     print(f"Result: {results}")
