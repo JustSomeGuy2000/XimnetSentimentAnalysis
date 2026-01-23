@@ -6,7 +6,9 @@
 }
 
 .sentiment-analysis-container {
-    margin: 20px;
+    padding: 20px;
+    width: 100%;
+    max-width: 100dvw
 }
 
 .chart-container {
@@ -14,17 +16,19 @@
 }
 
 .sentiment-table, .sentiment-table th, .sentiment-table td {
-    border: 1px solid black;
+    border: 1px solid white;
 }
 
 .sentiment-table {
     width: 100%;
-    max-width: 100vh;
-    margin: 10px
+    max-width: 100dvw;
+    margin: 10px;
+    align-self: center;
 }
 
 .sent-pos {
     background-color: greenyellow;
+    color: black
 }
 
 .sent-neg {
@@ -35,4 +39,19 @@
 .sent-neut {
     background-color: gray;
     color: white
+}
+
+.error-area {
+    color: rgb(248, 75, 75);
+}
+
+.chart-title {
+    font-size: 2.5em;
+    text-align: center;
+    max-width: 100dvw
+}
+
+.form-input-group {
+    margin-top: 1em;
+    margin-bottom: 1em
 }

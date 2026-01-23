@@ -2,6 +2,9 @@ import { useState } from "react"
 import { HEADER_CALLBACK_PING, HEADER_CLOSE, HEADER_INCOMING_IMAGE, HEADER_INCOMING_KEY, MsgCallbackPing, MsgClose, MsgCsv, MsgImage, MsgKey, SentimentAnalysisResult } from "./messages.js"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartData, Title } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
+import { Form, Button } from "react-bootstrap";
+
+import 'bootstrap/dist/css/bootstrap.min.css'
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -183,14 +186,9 @@ class ClientComms {
         for (const productName in accumulatedData) {
             const chart = this.#pieData(accumulatedData[productName])
             tempCharts.push(<div className="sentiment-analysis-container">
+                <div className="chart-title">{productName}</div>
                 <div className="chart-container" key={productName}>
                     <Pie className="sentiment-chart" data={chart} options={{
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: productName
-                            }
-                        },
                         maintainAspectRatio: false
                     }} ref={ref => { this.#chartRefs.push(ref as (ChartJS<"pie"> | null))}} redraw/>
                 </div>
@@ -212,9 +210,9 @@ class ClientComms {
                     label: "Number of reviews",
                     data: [data["p"], data["e"], data["n"]],
                     backgroundColor: [
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(130, 130, 130, 0.2)',
-                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(130, 130, 130, 0.6)',
+                        'rgba(255, 99, 132, 0.6)',
                     ],
                     borderColor: [
                         'rgba(54, 162, 235, 1)',
@@ -277,19 +275,23 @@ export default function App() {
     comms.setLoading = setLoadingText
     //console.log(`Charts: ${JSON.stringify(charts)}`)
     return (<>
-    <form className="input-form" id="input-form">
-        <label htmlFor="prod-name-input">Product name column name:</label> <br />
-        <input type="text" id="prod-name-input" name="prod-name-input" value={prodName} onChange={e => setProdName(e.target.value)}/> <br />
-
-        <label htmlFor="rev-name-input">Reviews column name:</label> <br />
-        <input type="text" id="rev-name-input" name="rev-name-input" value={revName} onChange={e => setRevName(e.target.value)}/> <br />
-
-        <label htmlFor="file-input">Choose file (only .csv allowed)</label> <br />
-        <input type="file" id="file-input" name="file-input" accept=".csv" /> <br />
-        <button onClick={comms.prepareSubmit.bind(comms, prodName, revName)} type="button">Submit</button> <br />
-    </form>
-    <div className="error-area">{error == null ? "" : error}</div>
-    <div className="loading-area">{loadingText}</div>
+    <Form className="input-form m-3" id="input-form">
+        <Form.Group controlId="prod-name-input" className="form-input-group">
+            <Form.Label>Enter product name column name:</Form.Label>
+            <Form.Control type="text" id="prod-name-input" className="form-input" defaultValue={savedProdName}/>
+        </Form.Group>
+        <Form.Group controlId="rev-name-input" className="form-input-group">
+            <Form.Label>Enter product name column name:</Form.Label>
+            <Form.Control type="text" id="rev-name-input" className="form-input" defaultValue={savedRevName}/>
+        </Form.Group>
+        <Form.Group controlId="file-input" className="form-input-group">
+            <Form.Label>Select CSV file:</Form.Label>
+            <Form.Control type="file" id="file-input" className="form-input" accept=".csv"/>
+        </Form.Group>
+        <Button className="form-input-group" variant="primary" type="button" onClick={comms.prepareSubmit.bind(comms, prodName, revName)}>Submit</Button>
+        <div className="error-area">{error == null ? "" : error}</div>
+        <div className="loading-area">{loadingText}</div>
+    </Form>
     {imageReady ? <div className="chart-display-area">{charts}</div> : <></>}
     </>)
 }
